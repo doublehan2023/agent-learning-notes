@@ -6,6 +6,7 @@ My notes and exercises for learning AI agents.
 
 - [2026-08-25 — What Is an AI Agent?](notes/2026-08-25-what-is-an-ai-agent.md)
 - [2026-08-26 — Agents, Deterministic Workflows, and Guardrails](notes/2026-08-26-agents-workflows-and-guardrails.md)
+- [2026-08-28 — Tools, Instructions, and Agent Loops](notes/2026-08-28-tools-instructions-and-agent-loops.md)
 
 ## Learning resources
 
