@@ -9,6 +9,7 @@ My notes and exercises for learning AI agents.
 - [2026-08-28 — Tools, Instructions, and Agent Loops](notes/2026-08-28-tools-instructions-and-agent-loops.md)
 - [2026-08-29 — Memory, Evals, and Order-Agent Design](notes/2026-08-29-memory-evals-and-order-agent-design.md)
 - [2026-08-30 — Order-Agent Tool Foundation](notes/2026-08-30-order-agent-tool-foundation.md)
+- [2026-08-31 — Order-Agent Decision Loop](notes/2026-08-31-order-agent-decision-loop.md)
 
 ## Learning resources
 
