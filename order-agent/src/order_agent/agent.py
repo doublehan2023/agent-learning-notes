@@ -10,6 +10,7 @@ def is_missing_package_report(message: str):
      normalized_message = message.lower()
      return (
           "missing" in normalized_message
+          or "lost" in normalized_message
           or "not received" in normalized_message
      )
 
@@ -89,4 +90,3 @@ def run_order_agent(
      return state
      
      
-

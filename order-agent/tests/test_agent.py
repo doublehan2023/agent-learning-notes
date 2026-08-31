@@ -71,6 +71,19 @@ class OrderAgentTests(unittest.TestCase):
         self.assertIn("delivered", state.final_response.lower())
         self.assertIn("human review", state.final_response.lower())
 
+    def test_delivered_order_reported_lost_is_escalated(self):
+        state = run_order_agent(
+            customer_message="Order #125 is marked delivered, but my package is lost.",
+            authenticated_customer_id="customer_3",
+        )
+
+        self.assertEqual(state.tool_result["result"], "success")
+        self.assertEqual(
+            state.escalation_reason,
+            "delivered_but_reported_missing",
+        )
+        self.assertIn("human review", state.final_response.lower())
+
     def test_regular_order_returns_status_and_tracking_link(self):
         state = run_order_agent(
             customer_message="What is the status of order #123?",
