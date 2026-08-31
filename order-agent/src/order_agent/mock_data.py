@@ -1,4 +1,4 @@
-ORDERS = [
+ORDERS = {
     "123": {
         "order_id": "123",
         "customer_id": "customer_1",
@@ -31,7 +31,7 @@ ORDERS = [
         "carrier_note": None,
         "tracking_url": "https://example.com/track/126",
     },
-]
+}
 
 
 
