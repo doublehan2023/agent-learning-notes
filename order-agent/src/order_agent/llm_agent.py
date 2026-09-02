@@ -55,7 +55,7 @@ def run_llm_order_agent(
 ) -> AgentState:
      active_client = _get_client()
      response = active_client.responses.create(
-          model="gpt-5.6-luna",
+          model="gpt-5.5",
           instructions=ORDER_STATUS_AGENT_INSTRUCTIONS,
           input=customer_message,
           tools=[ORDER_STATUS_TOOL],
@@ -126,4 +126,3 @@ def run_llm_order_agent(
           tool_result=tool_result,
           final_response=final_response.output_text,
      )
-     
