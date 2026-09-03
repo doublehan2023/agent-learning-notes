@@ -11,3 +11,4 @@ class AgentState:
      
      escalation_reason: str | None = None
      final_response: str | None = None
+     response_id: str | None = None

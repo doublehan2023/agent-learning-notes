@@ -49,17 +49,24 @@ ORDER_STATUS_TOOL = {
      "strict": True,
 }
 
+MODEL = "gpt-5.5"
+
 def run_llm_order_agent(
      customer_message: str,
-     authenticated_customer_id: str
+     authenticated_customer_id: str,
+     previous_response_id: str | None = None,
 ) -> AgentState:
+     request = {
+          "model": MODEL,
+          "instructions": ORDER_STATUS_AGENT_INSTRUCTIONS,
+          "input": customer_message,
+          "tools": [ORDER_STATUS_TOOL],
+     }
+     if previous_response_id is not None:
+          request["previous_response_id"] = previous_response_id
+
      active_client = _get_client()
-     response = active_client.responses.create(
-          model="gpt-5.5",
-          instructions=ORDER_STATUS_AGENT_INSTRUCTIONS,
-          input=customer_message,
-          tools=[ORDER_STATUS_TOOL],
-     )
+     response = active_client.responses.create(**request)
      
      function_calls = [
           item for item in response.output
@@ -71,6 +78,7 @@ def run_llm_order_agent(
                authenticated_customer_id=authenticated_customer_id,
                customer_message=customer_message,
                final_response=response.output_text,
+               response_id=response.id,
           )
 
      function_call = function_calls[0]
@@ -84,6 +92,7 @@ def run_llm_order_agent(
                     "I'm unable to complete that request. "
                     "A human reviewer will assist."
                ),
+               response_id=response.id,
           )
 
      try:
@@ -98,6 +107,7 @@ def run_llm_order_agent(
                     "I couldn’t confirm the order information. "
                     "A human reviewer will assist."
                ),
+               response_id=response.id,
           )
 
      tool_result = get_order_status(
@@ -106,7 +116,7 @@ def run_llm_order_agent(
      )
 
      final_response = active_client.responses.create(
-          model="gpt-5.6-luna",
+          model=MODEL,
           instructions=ORDER_STATUS_AGENT_INSTRUCTIONS,
           previous_response_id=response.id,
           input=[
@@ -125,4 +135,5 @@ def run_llm_order_agent(
           order_id=order_id,
           tool_result=tool_result,
           final_response=final_response.output_text,
+          response_id=final_response.id
      )
