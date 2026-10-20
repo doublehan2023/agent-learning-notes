@@ -3,11 +3,6 @@
 .env.*
 !.env.example
 
-# Python virtual environments
-.venv/
-venv/
-env/
-
 # Python bytecode and caches
 __pycache__/
 *.py[cod]
@@ -15,15 +10,21 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test and coverage output
 .coverage
+.coverage.*
 htmlcov/
+coverage.xml
 
-# Local application data and logs
-data/
-logs/
+# Local logs and editor/OS files
 *.log
-
-# Editor and operating-system files
 .DS_Store
 .vscode/
 .idea/
