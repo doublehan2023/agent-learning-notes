@@ -12,6 +12,7 @@ My notes and exercises for learning AI agents.
 - [2026-08-31 — Order-Agent Decision Loop](notes/2026-08-31-order-agent-decision-loop.md)
 - [2026-09-01 — LLM Tool Loop for the Order Agent](notes/2026-09-01-llm-tool-loop.md)
 - [2026-09-02 — Multi-Turn State and LLM Evaluations](notes/2026-09-02-multi-turn-state-and-llm-evals.md)
+- [2026-11-01 — Shared Evals and Live Smoke Tests](notes/2026-11-01-shared-evals-and-live-smoke-tests.md)
 
 ## Learning resources
 
