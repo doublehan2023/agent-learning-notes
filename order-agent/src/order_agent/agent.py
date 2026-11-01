@@ -2,17 +2,27 @@ from .state import AgentState
 from .tools import get_order_status
 import re
 
+def extract_order_ids(message: str) -> list[str]:
+     return re.findall(r"#(\d+)", message)
+
+
 def extract_order_id(message: str) -> str | None:
-     match = re.search(r"#(\d+)", message)
-     return match.group(1) if match else None
+     order_ids = extract_order_ids(message)
+     return order_ids[0] if order_ids else None
 
 def is_missing_package_report(message: str):
      normalized_message = message.lower()
-     return (
-          "missing" in normalized_message
-          or "lost" in normalized_message
-          or "not received" in normalized_message
-     )
+
+     missing_phrases = [
+          "missing",
+          "lost",
+          "not received",
+          "never arrived",
+          "nothing at my door",
+          "can't find my package",
+          "not here",
+     ]
+     return any(phrase in normalized_message for phrase in missing_phrases)
 
 def run_order_agent(
      customer_message: str,
@@ -30,11 +40,19 @@ def run_order_agent(
           )
           return state
      
-     state.order_id = extract_order_id(customer_message)
-     
-     if state.order_id is None:
+     order_ids = extract_order_ids(customer_message)
+
+     if not order_ids:
           state.final_response = "Please provide your order ID so I can check its status."
           return state
+
+     if len(order_ids) > 1:
+          state.final_response = (
+               "I found multiple order IDs. Which order would you like me to check?"
+          )
+          return state
+
+     state.order_id = order_ids[0]
      
      state.tool_result = get_order_status(
           order_id=state.order_id,
