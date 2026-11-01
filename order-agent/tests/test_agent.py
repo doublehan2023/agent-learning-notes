@@ -109,6 +109,24 @@ class OrderAgentTests(unittest.TestCase):
         self.assertIn("2026-09-03", state.final_response)
         self.assertIn("https://example.com/track/123", state.final_response)
 
+    def test_order_id_without_hash_is_used_for_lookup(self):
+        state = run_order_agent(
+            customer_message="Can you check order 123 for me?",
+            authenticated_customer_id="customer_1",
+        )
+
+        self.assertEqual(state.order_id, "123")
+        self.assertEqual(state.tool_result["result"], "success")
+
+    def test_repeated_order_id_is_one_lookup(self):
+        state = run_order_agent(
+            customer_message="Can you check order #123? I meant order #123.",
+            authenticated_customer_id="customer_1",
+        )
+
+        self.assertEqual(state.order_id, "123")
+        self.assertEqual(state.tool_result["result"], "success")
+
     def test_delivered_order_with_nothing_at_door_is_escalated(self):
         state = run_order_agent(
             customer_message=(

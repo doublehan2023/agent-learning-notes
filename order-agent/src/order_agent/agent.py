@@ -3,7 +3,13 @@ from .tools import get_order_status
 import re
 
 def extract_order_ids(message: str) -> list[str]:
-     return re.findall(r"#(\d+)", message)
+     matches = re.findall(
+          r"#(\d+)|\b(?:order|package)\s*(?:number\s*)?(\d+)\b",
+          message,
+          flags=re.IGNORECASE,
+     )
+     order_ids = [number for match in matches for number in match if number]
+     return list(dict.fromkeys(order_ids))
 
 
 def extract_order_id(message: str) -> str | None:

@@ -1,15 +1,99 @@
 """Run the local order-agent evaluation dataset without making model calls."""
 
+import argparse
 import json
 import re
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
-from order_agent.agent import get_order_status, run_order_agent
+from order_agent import agent, llm_agent
 
 
 CASES_PATH = Path(__file__).with_name("cases.json")
+LIVE_SMOKE_CASE_IDS = {
+    "in-transit-status-01",
+    "unauthorized-order-01",
+    "refund-request-01",
+    "multiple-order-ids-01",
+    "delivered-but-missing-01",
+}
+
+
+class FakeResponses:
+    """Provide deterministic, fixture-backed Responses API outputs for evals."""
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+
+    def create(self, **_kwargs):
+        return self._responses.pop(0)
+
+
+class FakeClient:
+    def __init__(self, responses):
+        self.responses = FakeResponses(responses)
+
+
+def response_from_fixture(fixture, response_id):
+    if fixture["type"] == "tool_call":
+        return SimpleNamespace(
+            id=response_id,
+            output=[
+                SimpleNamespace(
+                    type="function_call",
+                    name="get_order_status",
+                    arguments=json.dumps({"order_id": fixture["order_id"]}),
+                    call_id=f"call_{response_id}",
+                )
+            ],
+            output_text="",
+        )
+
+    return SimpleNamespace(id=response_id, output=[], output_text=fixture["text"])
+
+
+def run_deterministic(case):
+    with patch("order_agent.agent.get_order_status", wraps=agent.get_order_status) as lookup:
+        state = agent.run_order_agent(
+            customer_message=case["customer_message"],
+            authenticated_customer_id=case["authenticated_customer_id"],
+        )
+    return state, lookup
+
+
+def run_mocked_llm(case):
+    """Run the LLM loop with fixture responses, never making an API call."""
+    fixtures = case["mock_llm_responses"]
+    fake_client = FakeClient(
+        [
+            response_from_fixture(fixture, f"mock_response_{index}")
+            for index, fixture in enumerate(fixtures, start=1)
+        ]
+    )
+    with (
+        patch.object(llm_agent, "client", fake_client),
+        patch("order_agent.llm_agent.get_order_status", wraps=llm_agent.get_order_status) as lookup,
+    ):
+        state = llm_agent.run_llm_order_agent(
+            customer_message=case["customer_message"],
+            authenticated_customer_id=case["authenticated_customer_id"],
+        )
+    return state, lookup
+
+
+def run_live_llm(case):
+    """Run the real LLM agent and record its actual order-status tool calls."""
+    with patch(
+        "order_agent.llm_agent.get_order_status",
+        wraps=llm_agent.get_order_status,
+    ) as lookup:
+        state = llm_agent.run_llm_order_agent(
+            customer_message=case["customer_message"],
+            authenticated_customer_id=case["authenticated_customer_id"],
+        )
+    return state, lookup
 
 
 def outcome_happened(name, state, tool_call_count):
@@ -25,7 +109,11 @@ def outcome_happened(name, state, tool_call_count):
         "ask_customer_to_choose_one_order": lambda: (
             "which order" in response or "choose one order" in response
         ),
-        "escalate_to_human_review": lambda: state.escalation_reason is not None,
+        "escalate_to_human_review": lambda: (
+            state.escalation_reason is not None
+            or "human review" in response
+            or "human reviewer" in response
+        ),
         "state_verified_status_delivered": lambda: (
             order.get("status") == "delivered" and "delivered" in response
         ),
@@ -100,16 +188,14 @@ def outcome_happened(name, state, tool_call_count):
         raise ValueError(f"Unknown outcome name: {name}") from error
 
 
-def run_case(case):
+def run_case(case, agent_name):
     """Run one dataset case and return a list of grading failures."""
-    with patch(
-        "order_agent.agent.get_order_status",
-        wraps=get_order_status,
-    ) as lookup:
-        state = run_order_agent(
-            customer_message=case["customer_message"],
-            authenticated_customer_id=case["authenticated_customer_id"],
-        )
+    if agent_name == "deterministic":
+        state, lookup = run_deterministic(case)
+    elif agent_name == "llm-mocked":
+        state, lookup = run_mocked_llm(case)
+    else:
+        state, lookup = run_live_llm(case)
 
     failures = []
     expected_tool = case["expected_tool"]
@@ -133,22 +219,90 @@ def run_case(case):
         if outcome_happened(outcome, state, lookup.call_count):
             failures.append(f"Forbidden outcome occurred: {outcome}.")
 
-    return failures
+    actual_tool_arguments = (
+        lookup.call_args.kwargs if lookup.call_count else None
+    )
+    return failures, {
+        "customer_message": case["customer_message"],
+        "expected_tool": expected_tool,
+        "actual_tool_calls": lookup.call_count,
+        "actual_tool_arguments": actual_tool_arguments,
+        "response": state.final_response,
+        "escalation_reason": state.escalation_reason,
+    }
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--agent",
+        choices=("deterministic", "llm-mocked", "llm-live"),
+        default="deterministic",
+        help="Agent implementation to evaluate (default: deterministic).",
+    )
+    parser.add_argument(
+        "--case",
+        action="append",
+        dest="case_ids",
+        help="Run one named case. Repeat this option to run more than one case.",
+    )
+    args = parser.parse_args()
     cases = json.loads(CASES_PATH.read_text(encoding="utf-8"))
+
+    if args.agent == "llm-live":
+        selected_case_ids = set(args.case_ids or LIVE_SMOKE_CASE_IDS)
+        non_smoke_cases = selected_case_ids - LIVE_SMOKE_CASE_IDS
+        if non_smoke_cases:
+            parser.error(
+                "llm-live is restricted to the five smoke cases; unsupported: "
+                + ", ".join(sorted(non_smoke_cases))
+            )
+        try:
+            llm_agent._get_client()
+        except Exception as error:
+            print(
+                "Live eval cannot start. Set OPENAI_API_KEY, then run the command again."
+            )
+            print(f"Credential error: {error}")
+            return 2
+    else:
+        selected_case_ids = set(args.case_ids or [])
+
+    if selected_case_ids:
+        cases = [case for case in cases if case["id"] in selected_case_ids]
+        found_case_ids = {case["id"] for case in cases}
+        unknown_case_ids = selected_case_ids - found_case_ids
+        if unknown_case_ids:
+            parser.error("Unknown case: " + ", ".join(sorted(unknown_case_ids)))
+
     passed = 0
 
     for case in cases:
-        failures = run_case(case)
+        failures, report = run_case(case, args.agent)
         if failures:
             print(f"FAIL {case['id']}: {' '.join(failures)}")
+            print(f"  Customer message: {report['customer_message']}")
+            print(f"  Expected tool: {report['expected_tool']}")
+            print(
+                "  Actual tool calls: "
+                f"{report['actual_tool_calls']} {report['actual_tool_arguments']}"
+            )
+            print(f"  Response: {report['response']}")
+            print(f"  Escalation reason: {report['escalation_reason']}")
         else:
             passed += 1
             print(f"PASS {case['id']}")
 
-    print(f"\n{passed}/{len(cases)} passed")
+        if args.agent == "llm-live":
+            print(
+                "  TRACE "
+                f"tool_calls={report['actual_tool_calls']} "
+                f"arguments={report['actual_tool_arguments']} "
+                f"escalation={report['escalation_reason']}"
+            )
+            print(f"  RESPONSE {report['response']}")
+
+    print(f"\n{args.agent}: {passed}/{len(cases)} passed")
     return 0 if passed == len(cases) else 1
 
 

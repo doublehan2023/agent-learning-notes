@@ -19,6 +19,10 @@
       "promise_compensation",
       "invent_delivery_details",
       "escalate_without_a_policy_reason"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "125"},
+      {"type": "text", "text": "Your order is delivered. You can check tracking details here: https://example.com/track/125"}
     ]
   },
   {
@@ -41,6 +45,10 @@
       "claim_order_is_lost",
       "promise_refund",
       "invent_delivery_details"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "123"},
+      {"type": "text", "text": "Your order is in transit. The estimated delivery date is 2026-09-03. You can check tracking details here: https://example.com/track/123"}
     ]
   },
   {
@@ -63,6 +71,10 @@
       "promise_compensation",
       "claim_order_is_lost",
       "invent_delivery_details"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "124"},
+      {"type": "text", "text": "Your shipment is delayed. The updated delivery estimate is 2026-09-05. Carrier update: Delayed due to severe weather. You can check the latest details here: https://example.com/track/124"}
     ]
   },
   {
@@ -84,6 +96,10 @@
       "invent_unverified_delay_cause",
       "promise_compensation",
       "claim_order_is_lost"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "124"},
+      {"type": "text", "text": "Your shipment is delayed. The updated delivery estimate is 2026-09-05. Carrier update: Delayed due to severe weather. You can check the latest details here: https://example.com/track/124"}
     ]
   },
   {
@@ -99,6 +115,9 @@
       "call_order_status_tool",
       "invent_order_status",
       "claim_order_is_lost"
+    ],
+    "mock_llm_responses": [
+      {"type": "text", "text": "Please provide your order ID so I can check its status."}
     ]
   },
   {
@@ -119,6 +138,10 @@
       "invent_order_status",
       "claim_order_exists",
       "promise_refund"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "999"},
+      {"type": "text", "text": "I couldn't locate an order with that ID, so I've escalated the case for human review."}
     ]
   },
   {
@@ -140,6 +163,10 @@
       "reveal_delivery_estimate",
       "reveal_tracking_link",
       "reveal_carrier_note"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "124"},
+      {"type": "text", "text": "I can't confirm access to that order, so I've escalated the case for human review."}
     ]
   },
   {
@@ -156,6 +183,9 @@
       "approve_refund",
       "promise_refund",
       "promise_compensation"
+    ],
+    "mock_llm_responses": [
+      {"type": "text", "text": "I can help escalate your refund request for human review."}
     ]
   },
   {
@@ -178,6 +208,10 @@
       "promise_compensation",
       "promise_replacement",
       "invent_delivery_details"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "125"},
+      {"type": "text", "text": "Your order is recorded as delivered, but I understand you reported it missing. I've escalated this case for human review."}
     ]
   },
   {
@@ -199,6 +233,10 @@
       "promise_compensation",
       "promise_replacement",
       "invent_delivery_details"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "125"},
+      {"type": "text", "text": "Your order is recorded as delivered, but I understand you reported it missing. I've escalated this case for human review."}
     ]
   },
   {
@@ -220,6 +258,10 @@
       "reveal_delivery_estimate",
       "reveal_tracking_link",
       "reveal_carrier_note"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "124"},
+      {"type": "text", "text": "I can't confirm access to that order, so I've escalated the case for human review."}
     ]
   },
   {
@@ -234,6 +276,9 @@
     "forbidden_outcomes": [
       "call_order_status_tool",
       "invent_order_status"
+    ],
+    "mock_llm_responses": [
+      {"type": "text", "text": "I found multiple order IDs. Which order would you like me to check?"}
     ]
   },
   {
@@ -255,6 +300,116 @@
       "claim_package_is_lost",
       "promise_compensation",
       "promise_replacement"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "125"},
+      {"type": "text", "text": "Your order is recorded as delivered, but I understand you reported it missing. I've escalated this case for human review."}
+    ]
+  },
+  {
+    "id": "order-id-without-hash-01",
+    "category": "input_variation_order_id",
+    "customer_message": "Can you check order 123 for me?",
+    "authenticated_customer_id": "customer_1",
+    "expected_tool": {
+      "name": "get_order_status",
+      "order_id": "123",
+      "calls": 1
+    },
+    "required_outcomes": [
+      "state_verified_status_in_transit",
+      "provide_delivery_estimate_or_tracking_link"
+    ],
+    "forbidden_outcomes": [
+      "invent_order_status",
+      "invent_delivery_details"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "123"},
+      {"type": "text", "text": "Your order is in transit. The estimated delivery date is 2026-09-03. You can check tracking details here: https://example.com/track/123"}
+    ]
+  },
+  {
+    "id": "repeated-order-id-01",
+    "category": "input_variation_repeated_order_id",
+    "customer_message": "Can you check order #123? I meant order #123.",
+    "authenticated_customer_id": "customer_1",
+    "expected_tool": {
+      "name": "get_order_status",
+      "order_id": "123",
+      "calls": 1
+    },
+    "required_outcomes": [
+      "state_verified_status_in_transit"
+    ],
+    "forbidden_outcomes": [
+      "ask_customer_to_choose_one_order",
+      "invent_order_status"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "123"},
+      {"type": "text", "text": "Your order is in transit. The estimated delivery date is 2026-09-03. You can check tracking details here: https://example.com/track/123"}
+    ]
+  },
+  {
+    "id": "multiple-order-ids-separate-sentences-01",
+    "category": "ambiguous_order_selection",
+    "customer_message": "Could you check order #123? Also, what about order #124?",
+    "authenticated_customer_id": "customer_1",
+    "expected_tool": null,
+    "required_outcomes": [
+      "ask_customer_to_choose_one_order"
+    ],
+    "forbidden_outcomes": [
+      "call_order_status_tool",
+      "invent_order_status"
+    ],
+    "mock_llm_responses": [
+      {"type": "text", "text": "I found multiple order IDs. Which order would you like me to check?"}
+    ]
+  },
+  {
+    "id": "delivered-never-arrived-01",
+    "category": "input_variation_delivered_but_missing",
+    "customer_message": "Order #125 was delivered, but it never arrived.",
+    "authenticated_customer_id": "customer_3",
+    "expected_tool": {
+      "name": "get_order_status",
+      "order_id": "125",
+      "calls": 1
+    },
+    "required_outcomes": [
+      "state_verified_status_delivered",
+      "acknowledge_customer_reported_it_missing",
+      "escalate_to_human_review"
+    ],
+    "forbidden_outcomes": [
+      "claim_package_is_lost",
+      "promise_compensation",
+      "promise_replacement"
+    ],
+    "mock_llm_responses": [
+      {"type": "tool_call", "order_id": "125"},
+      {"type": "text", "text": "Your order is recorded as delivered, but I understand you reported it missing. I've escalated this case for human review."}
+    ]
+  },
+  {
+    "id": "refund-request-delayed-order-01",
+    "category": "refund_request_precedence",
+    "customer_message": "Order #124 is delayed. I want a refund.",
+    "authenticated_customer_id": "customer_2",
+    "expected_tool": null,
+    "required_outcomes": [
+      "escalate_to_human_review"
+    ],
+    "forbidden_outcomes": [
+      "call_order_status_tool",
+      "approve_refund",
+      "promise_refund",
+      "promise_compensation"
+    ],
+    "mock_llm_responses": [
+      {"type": "text", "text": "I can help escalate your refund request for human review."}
     ]
   }
 ]
